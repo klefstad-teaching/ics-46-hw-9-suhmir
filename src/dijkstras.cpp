@@ -1,72 +1,65 @@
 #include "dijkstras.h"
 #include <algorithm>
 
-// Function to compute the shortest distances from the start node to all other nodes using Dijkstra's algorithm
-vector<int> dijkstra_shortest_path(const Graph& graph, int start_node, vector<int>& predecessors) {
-    int num_vertices = graph.numVertices;
-    vector<int> distances(num_vertices, INF); // Initialize all distances to infinity
-    predecessors.assign(num_vertices, -1); // Initialize all predecessors to -1
-    vector<bool> is_visited(num_vertices, false); // Track visited nodes
+// Compute the shortest paths using Dijkstra's algorithm.
+// 'graph' is the input graph, 'startNode' is the source vertex, and 'prevNodes' will store each node's predecessor.
+vector<int> compute_dijkstra_shortest_path(const Graph& graph, int startNode, vector<int>& prevNodes) {
+    int numNodes = graph.numVertices;
+    vector<int> distanceVector(numNodes, INF);  // Initialize distances to INF.
+    prevNodes.assign(numNodes, -1);              // Initialize all predecessors to -1.
+    vector<bool> processed(numNodes, false);     // Track whether a node has been finalized.
     
-    // Min-heap priority queue to select the node with the smallest distance
-    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> min_heap;
+    // Min-heap (priority queue) storing pairs of (distance, node)
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> minHeap;
+    
+    distanceVector[startNode] = 0;
+    minHeap.push({0, startNode});
 
-    distances[start_node] = 0; // Distance to the start node is zero
-    min_heap.push({0, start_node}); // Push the start node into the heap
-
-    while (!min_heap.empty()) {
-        int current_node = min_heap.top().second; // Select the node with the smallest distance
-        min_heap.pop();
-
-        if (is_visited[current_node]) // Skip if already visited
+    while (!minHeap.empty()) {
+        int currentNode = minHeap.top().second;
+        minHeap.pop();
+        
+        // Skip if the node has already been processed.
+        if (processed[currentNode])
             continue;
-
-        is_visited[current_node] = true; // Mark the current node as visited
-
-        // Explore all adjacent edges
-        for (const Edge& edge : graph[current_node]) {
-            int neighbor = edge.dst; // Neighboring node
-            int edge_weight = edge.weight; // Weight of the edge to the neighbor
-
-            // Update the distance if a shorter path is found
-            if (!is_visited[neighbor] && distances[current_node] + edge_weight < distances[neighbor]) {
-                distances[neighbor] = distances[current_node] + edge_weight; // Update distance
-                predecessors[neighbor] = current_node; // Update predecessor
-                min_heap.push({distances[neighbor], neighbor}); // Push the updated node into the heap
+        processed[currentNode] = true;
+        
+        // Relaxation step for all adjacent edges.
+        for (const Edge& edge : graph[currentNode]) {
+            int neighborNode = edge.dst;
+            int edgeWeight = edge.weight;
+            if (!processed[neighborNode] && distanceVector[currentNode] + edgeWeight < distanceVector[neighborNode]) {
+                distanceVector[neighborNode] = distanceVector[currentNode] + edgeWeight;
+                prevNodes[neighborNode] = currentNode;
+                minHeap.push({distanceVector[neighborNode], neighborNode});
             }
         }
     }
-
-    return distances; // Return the computed shortest distances
+    return distanceVector;
 }
 
-// Function to extract the shortest path from the start node to the destination node
-vector<int> extract_shortest_path(const vector<int>& distances, const vector<int>& predecessors, int destination) {
+// Reconstruct the shortest path from the source to 'targetNode' using the 'prevNodes' array.
+vector<int> reconstruct_shortest_path(const vector<int>& distanceVector, const vector<int>& prevNodes, int targetNode) {
     vector<int> path;
-    
-    // Trace the path from destination to start using the predecessors
-    for (int current = destination; current != -1; current = predecessors[current]) {
-        path.push_back(current);
+    for (int node = targetNode; node != -1; node = prevNodes[node]) {
+        path.push_back(node);
     }
-
-    reverse(path.begin(), path.end()); // Reverse to get the path from start to destination
-    return path; // Return the extracted path
+    reverse(path.begin(), path.end());
+    return path;
 }
 
-// Function to print the computed path and its total cost
-void print_path(const vector<int>& path, int total_cost) {
-    if (path.empty()) { // If no path exists
-        cout << "No path available" << endl;
-    } else if (path.size() == 1) { // If the path contains only one node, it's invalid
+// Display the path and its total cost.
+void display_path(const vector<int>& path, int totalCost) {
+    if (path.size() == 1) {
         cout << "Path not found" << endl;
-    } else {
-        // Print the path
-        for (size_t index = 0; index < path.size(); ++index) {
-            cout << path[index];
-            if (index < path.size() - 1) // Avoid extra space at the end
-                cout << " ";
-        }
-        // Print the total cost of the path
-        cout << "\nTotal cost is " << total_cost << "\n";
+        return;
     }
+    
+    for (size_t idx = 0; idx < path.size(); ++idx) {
+        cout << path[idx];
+        if (idx < path.size() - 1)  // Print space between nodes, but not after the last one.
+            cout << " ";
+    }
+    
+    cout << "\nTotal cost is " << totalCost << "\n"; 
 }
