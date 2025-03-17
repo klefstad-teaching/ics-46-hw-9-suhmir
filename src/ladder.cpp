@@ -4,94 +4,107 @@
 #include <set>
 #include <queue>
 #include <vector>
+#include <sstream>
+
 using namespace std;
 
-void error(string word1, string word2, string msg) {
-    cerr << "Error: " << msg << "  " << word1 << word2 << endl;
+void error(string firstToken, string secondToken, string errorMessage) {
+    cerr << "Error: " << errorMessage << "  " << firstToken << secondToken << endl;
 }
 
-void load_words(set<string> &word_list, const string& file_name) {
-    ifstream file(file_name);  // Open the file.
-    if (!file) {
-        cerr << "Cannot open file: " << file_name << endl;
+void load_words(set<string>& dictionary, const string& filename) {
+    ifstream inFile(filename);  // Open the file.
+    if (!inFile) {
+        cerr << "Cannot open file: " << filename << endl;
         exit(1);
     }
-    string word;
-    while (file >> word) {
-        word_list.insert(word);
-    }
-    file.close();
-}
-
-bool edit_distance_within(const string& str1, const string& str2, int d) {
-    int len1 = str1.length(), len2 = str2.length();
-    if (abs(len1 - len2) > 1)
-        return false;
-    
-    int i = 0;
-    int j = 0;
-    int diff = 0;
-    while (i < len1 && j < len2) {
-        if (str1[i] != str2[j]) {
-            if (++diff > d)
-                return false;
-            if (len1 > len2)
-                i++;
-            else if (len1 < len2)
-                j++;
-            else {
-                i++;
-                j++;
-            }
-        } else {
-            i++;
-            j++;
+    string currentLine;
+    // Read each line from the file.
+    while (getline(inFile, currentLine)) {
+        // Use a string stream to extract words from the line.
+        istringstream lineStream(currentLine);
+        string token;
+        while (lineStream >> token) {
+            dictionary.insert(token);
         }
     }
-    return diff + (len1 - i) + (len2 - j) <= d;
+    inFile.close();
 }
 
-bool is_adjacent(const string& word1, const string& word2) {
-    return edit_distance_within(word1, word2, 1);
+bool edit_distance_within(const string& strA, const string& strB, int maxAllowed) {
+    int lenA = strA.length(), lenB = strB.length();
+    if (abs(lenA - lenB) > 1)
+        return false;
+    
+    int posA = 0;
+    int posB = 0;
+    int differences = 0;
+    while (posA < lenA && posB < lenB) {
+        if (strA[posA] != strB[posB]) {
+            if (++differences > maxAllowed)
+                return false;
+            if (lenA > lenB)
+                posA++;
+            else if (lenA < lenB)
+                posB++;
+            else {
+                posA++;
+                posB++;
+            }
+        } else {
+            posA++;
+            posB++;
+        }
+    }
+    return differences + (lenA - posA) + (lenB - posB) <= maxAllowed;
 }
 
-vector<string> generate_word_ladder(const string& begin_word, const string& end_word, const set<string>& word_list) {
-    if (begin_word == end_word)
+bool is_adjacent(const string& firstWord, const string& secondWord) {
+    if (edit_distance_within(firstWord, secondWord, 1)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+vector<string> generate_word_ladder(const string& startWord, const string& targetWord, const set<string>& dictionary) {
+    if (startWord == targetWord)
         return {};
     
-    queue<vector<string>> l_queue;
-    set<string> visited;
-    l_queue.push({begin_word});
-    visited.insert(begin_word);
+    queue<vector<string>> ladderQueue;
+    set<string> seenWords;
+    ladderQueue.push({startWord});
+    seenWords.insert(startWord);
 
-    while (!l_queue.empty()) {
-        vector<string> ladder = l_queue.front();
-        l_queue.pop();
-        string last = ladder.back();
+    while (!ladderQueue.empty()) {
+        vector<string> currentLadder = ladderQueue.front();
+        ladderQueue.pop();
+        string lastWord = currentLadder.back();
 
-        for (const string& word : word_list) {
-            if (is_adjacent(last, word) && !visited.count(word)) {
-                vector<string> new_ladder = ladder;
-                new_ladder.push_back(word);
-                if (word == end_word)
-                    return new_ladder;
-                l_queue.push(new_ladder);
-                visited.insert(word);
+        for (const string& candidate : dictionary) {
+            if (is_adjacent(lastWord, candidate) && !seenWords.count(candidate)) {
+                vector<string> nextLadder = currentLadder;
+                nextLadder.push_back(candidate);
+                if (candidate == targetWord)
+                    return nextLadder;
+                ladderQueue.push(nextLadder);
+                seenWords.insert(candidate);
             }
         }
     }
     return {};
 }
 
-// Modified print_word_ladder: prints a space after every word, ensuring a trailing space.
 void print_word_ladder(const vector<string>& ladder) {
     if (ladder.empty()) {
         cout << "No word ladder found." << endl;
         return;
     }
     cout << "Word ladder found: ";
-    for (size_t i = 0; i < ladder.size(); ++i) {
-        cout << ladder[i] << " ";
+    size_t pos = 0;
+    while (pos < ladder.size()) {
+        cout << ladder[pos] << " ";
+        ++pos;
     }
     cout << endl;
 }
