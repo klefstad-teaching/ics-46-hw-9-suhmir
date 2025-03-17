@@ -87,15 +87,12 @@ void display_word_ladder(const vector<string>& ladder_sequence) {
         return;
     }
     cout << "Word ladder found: ";
-    size_t idx = 0;
-    while (idx < ladder_sequence.size()) {
-        cout << ladder_sequence[idx];
-        if (idx < ladder_sequence.size() - 1)
-            cout << " ";
-        idx++;
+    for (const auto& word : ladder_sequence) {
+        cout << word << " "; // Always add a space after each word
     }
-    cout << endl;
+    cout << "\n";
 }
+
 
 #define assert_check(e) {cout << #e << ((e) ? " passed" : " failed") << endl;}
 
