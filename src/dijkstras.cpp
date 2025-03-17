@@ -1,60 +1,63 @@
 #include "dijkstras.h"
 #include <algorithm>
 
-std::vector<int> dijkstra_shortest_path(const Graph& graph, int source, std::vector<int>& previousNodes) {
-    int vertexCount = graph.numVertices;
-    std::vector<int> minDistances(vertexCount, INF);
-    previousNodes.assign(vertexCount, -1);
-    std::vector<bool> visited(vertexCount, false);
+vector<int> dijkstra_shortest_path(const Graph& graph, int start_node, vector<int>& predecessors) {
+    int num_nodes = graph.numVertices;
+    vector<int> distances(num_nodes, INF);
+    predecessors.assign(num_nodes, -1);
+    vector<bool> is_visited(num_nodes, false);
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> min_heap;
+    
+    distances[start_node] = 0;
+    min_heap.push({0, start_node});
 
-    using DistanceVertexPair = std::pair<int, int>;  // (distance, vertex)
-    std::priority_queue<DistanceVertexPair, std::vector<DistanceVertexPair>, std::greater<DistanceVertexPair>> priorityQueue;
+    while (!min_heap.empty()) {
+        int current_node = min_heap.top().second;
+        min_heap.pop();
+        
+        if (is_visited[current_node]) 
+            continue;
+        
+        is_visited[current_node] = true;
 
-    minDistances[source] = 0;
-    priorityQueue.push({0, source});
+        for (const Edge& edge : graph[current_node]) {
+            int neighbor_node = edge.dst;
+            int edge_weight = edge.weight;
 
-    while (!priorityQueue.empty()) {
-        int currentVertex = priorityQueue.top().second;
-        priorityQueue.pop();
-
-        if (visited[currentVertex]) continue;
-        visited[currentVertex] = true;
-
-        for (const Edge& edge : graph[currentVertex]) {
-            int neighbor = edge.dst;
-            int weight = edge.weight;
-
-            if (!visited[neighbor] && minDistances[currentVertex] + weight < minDistances[neighbor]) {
-                minDistances[neighbor] = minDistances[currentVertex] + weight;
-                previousNodes[neighbor] = currentVertex;
-                priorityQueue.push({minDistances[neighbor], neighbor});
+            if (!is_visited[neighbor_node] && distances[current_node] + edge_weight < distances[neighbor_node]) {
+                distances[neighbor_node] = distances[current_node] + edge_weight;
+                predecessors[neighbor_node] = current_node;
+                min_heap.push({distances[neighbor_node], neighbor_node});
             }
         }
     }
-
-    return minDistances;
+    return distances;
 }
 
-std::vector<int> extract_shortest_path(const std::vector<int>& distances, const std::vector<int>& previousNodes, int destination) {
-    std::vector<int> path;
-    for (int current = destination; current != -1; current = previousNodes[current]) {
-        path.push_back(current);
+vector<int> extract_shortest_path(const vector<int>& distances, const vector<int>& predecessors, int end_node) {
+    vector<int> path;
+    int node = end_node;
+    while (node != -1) {
+        path.push_back(node);
+        node = predecessors[node];
     }
-    std::reverse(path.begin(), path.end());
+    reverse(path.begin(), path.end());
     return path;
 }
 
-void print_path(const std::vector<int>& path, int totalCost) {
-    std::size_t index = 0;
-    while (index < path.size()) {
-        std::cout << path[index];
-        if (index + 1 < path.size()) {
-            std::cout << " ";
-        } else {
-            std::cout << "\n";
-        }
-        ++index;
+void print_path(const vector<int>& path, int total_cost) {
+    if (path.size() == 1) {
+        cout << "Path not found" << endl;
+        return;
     }
-    std::cout << "Total cost is " << totalCost << "\n";
-}
+    
+    size_t index = 0;
+    while (index < path.size()) {
+        cout << path[index];
+        if (index < path.size() - 1)
+            cout << " ";
+        index++;
+    }
 
+    cout << "\nTotal cost is " << total_cost << "\n";
+}
