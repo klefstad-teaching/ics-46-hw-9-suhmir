@@ -1,111 +1,154 @@
 #include "ladder.h"
 
-void display_error(const string& first_word, const string& second_word, const string& message) {
-    cerr << "Error: " << message << " [" << first_word << " " << second_word << "]" << endl;
+// Function to report an error message.
+// Combines two tokens with a descriptive message and outputs to standard error.
+void report_error(string token1, string token2, string message) {
+    cerr << "Error: " << message << ":  " << token1 << token2 << endl;
 }
 
-
-void load_word_list(set<string> &word_set, const string& filename) {
-    ifstream file_stream(filename);
-    if (!file_stream) {
+// Function to load words from a file into a set (dictionary).
+// The set ensures each word is unique.
+void load_word_set(set<string> &dictionary, const string& filename) {
+    ifstream inputFile(filename);
+    // Check if the file was successfully opened.
+    if (!inputFile) {
         cerr << "Cannot open file: " << filename << endl;
-        exit(1);
+        exit(1); // Exit the program if the file cannot be opened.
     }
-    string current_word;
-    while (file_stream >> current_word) {
-        word_set.insert(current_word);
+    string currentWord;
+    // Read words one by one and insert them into the dictionary.
+    while (inputFile >> currentWord) {
+        dictionary.insert(currentWord);
     }
-    file_stream.close();
+    inputFile.close(); // Always close the file when done.
 }
 
-bool is_within_edit_distance(const string& first_str, const string& second_str, int max_distance) {
-    int length1 = first_str.length(), length2 = second_str.length();
-    if (abs(length1 - length2) > 1) 
-        return false; 
+// Function to check if two strings are within a given edit distance.
+// This version is optimized for an edit distance of 1 (or more, based on maxDiff).
+bool within_edit_distance(const string& s1, const string& s2, int maxDiff) {
+    int len1 = s1.length(), len2 = s2.length();
+    // If the length difference is more than 1, they can't be within the edit distance.
+    if (abs(len1 - len2) > 1)
+        return false;
 
-    int index1 = 0;
-    int index2 = 0;
-    int differences = 0;
-    while (index1 < length1 && index2 < length2) {
-        if (first_str[index1] != second_str[index2]) {
-            if (++differences > max_distance) 
+    int idx1 = 0;       // Index for s1
+    int idx2 = 0;       // Index for s2
+    int diffCount = 0;  // Counter for differences found
+
+    // Traverse both strings until we reach the end of one.
+    while (idx1 < len1 && idx2 < len2) {
+        // If characters don't match, we have a potential edit.
+        if (s1[idx1] != s2[idx2]) {
+            // Increase the difference count and check if we exceeded the allowed differences.
+            if (++diffCount > maxDiff)
                 return false;
-            if (length1 > length2) 
-                index1++;
-            else if (length1 < length2) 
-                index2++;
+            // Depending on which string is longer, increment the index of the longer string.
+            if (len1 > len2)
+                idx1++;
+            else if (len1 < len2)
+                idx2++;
             else {
-                index1++; 
-                index2++; 
+                // If both strings are equal in length, increment both indices.
+                idx1++;
+                idx2++;
             }
         } else {
-            index1++; 
-            index2++;
+            // Characters match, simply move to the next ones.
+            idx1++;
+            idx2++;
         }
     }
-    return differences + (length1 - index1) + (length2 - index2) <= max_distance;
+    // Add any remaining characters (if one string was longer) to the difference count.
+    return diffCount + (len1 - idx1) + (len2 - idx2) <= maxDiff;
 }
 
-bool are_adjacent(const string& word_one, const string& word_two) {
-    if (is_within_edit_distance(word_one, word_two, 1)) {
-        return true;
+// Helper function to check if two words are adjacent (i.e., differ by at most one edit).
+bool are_adjacent(const string& firstWord, const string& secondWord) {
+    return within_edit_distance(firstWord, secondWord, 1);
+}
+
+// Function to build a word ladder from startWord to targetWord using a dictionary of words.
+// A word ladder is a sequence where each adjacent pair of words differs by one letter.
+vector<string> build_word_ladder(const string& startWord, const string& targetWord, const set<string>& dictionary) {
+    // If the start and target words are the same, no ladder is needed.
+    if (startWord == targetWord) {
+        return {}; // Return an empty vector.
     } else {
-        return false;
-    }
-}
+        // Queue to hold the ladders (each ladder is a vector of strings).
+        queue<vector<string>> ladderQueue;
+        // Set to track words that have been seen to avoid cycles.
+        set<string> seenWords;
 
-vector<string> build_word_ladder(const string& start_word, const string& target_word, const set<string>& word_set) {
-    if (start_word == target_word) 
-        return {}; 
-    queue<vector<string>> ladder_queue;
-    set<string> seen_words;
-    ladder_queue.push({start_word});
-    seen_words.insert(start_word);
+        // Start the ladder with the initial word.
+        ladderQueue.push({startWord});
+        seenWords.insert(startWord);
 
-    while (!ladder_queue.empty()) {
-        vector<string> current_ladder = ladder_queue.front();
-        ladder_queue.pop();
-        string last_word = current_ladder.back();
+        // Perform a breadth-first search (BFS) for the word ladder.
+        while (!ladderQueue.empty()) {
+            // Get the current ladder (path) from the front of the queue.
+            vector<string> currentLadder = ladderQueue.front();
+            ladderQueue.pop();
+            // Get the last word in the current ladder.
+            string lastWord = currentLadder.back();
 
-        for (const string& word : word_set) {
-            if (are_adjacent(last_word, word) && !seen_words.count(word)) {
-                vector<string> next_ladder = current_ladder;
-                next_ladder.push_back(word);
-                if (word == target_word) 
-                    return next_ladder;
-                ladder_queue.push(next_ladder);
-                seen_words.insert(word);
+            // Iterate through all words in the dictionary.
+            for (const string& candidate : dictionary) {
+                // Check if the candidate word is adjacent to the last word and hasn't been visited.
+                if (are_adjacent(lastWord, candidate) && !seenWords.count(candidate)) {
+                    // Create a new ladder by appending the candidate word.
+                    vector<string> nextLadder = currentLadder;
+                    nextLadder.push_back(candidate);
+                    // If the candidate is the target word, we've found our ladder.
+                    if (candidate == targetWord)
+                        return nextLadder;
+                    // Otherwise, add the new ladder to the queue and mark the word as seen.
+                    ladderQueue.push(nextLadder);
+                    seenWords.insert(candidate);
+                }
             }
         }
+        // If no ladder is found, return an empty vector.
+        return {};
     }
-    return {};
 }
 
-void display_word_ladder(const vector<string>& ladder_sequence) {
-    if (ladder_sequence.empty()) {
-        cout << "No word ladder found." << endl; 
+// Function to display the found word ladder.
+// Prints the words in sequence separated by spaces.
+void display_word_ladder(const vector<string>& ladderSequence) {
+    // If the ladder is empty, indicate that no ladder was found.
+    if (ladderSequence.empty()) {
+        cout << "No word ladder found." << endl;
         return;
     }
     cout << "Word ladder found: ";
-    for (const auto& word : ladder_sequence) {
-        cout << word << " "; // Always add a space after each word
+    // Use a while loop to iterate through the ladder sequence.
+    size_t pos = 0;
+    while (pos < ladderSequence.size()) {
+        cout << ladderSequence[pos];
+        // Only print a space if this isn't the last word.
+        if (pos < ladderSequence.size() - 1)
+            cout << " ";
+        ++pos;
     }
-    cout << "\n";
+    cout << endl;
 }
 
+// Macro for simple assertion testing.
+// Prints whether an expression passed or failed.
+#define my_assert(expr) { cout << #expr << ((expr) ? " passed" : " failed") << endl; }
 
-#define assert_check(e) {cout << #e << ((e) ? " passed" : " failed") << endl;}
-
+// Function to test the word ladder generation with several assertions.
 void test_word_ladder() {
+    set<string> dictionary;
 
-    set<string> word_set;
+    // Load words from "words.txt" into the dictionary.
+    load_word_set(dictionary, "words.txt");
 
-    load_word_list(word_set, "words.txt");
-
-    assert_check(build_word_ladder("cat", "dog", word_set).size() == 4);
-    assert_check(build_word_ladder("marty", "curls", word_set).size() == 6);
-    assert_check(build_word_ladder("code", "data", word_set).size() == 6);
-    assert_check(build_word_ladder("work", "play", word_set).size() == 6);
-    assert_check(build_word_ladder("sleep", "awake", word_set).size() == 8);
-    assert_check(build_word_ladder("car", "cheat", word_set).size() == 4);
+    // Test cases: assert that the word ladder generated has the expected size.
+    my_assert(build_word_ladder("cat", "dog", dictionary).size() == 4);
+    my_assert(build_word_ladder("marty", "curls", dictionary).size() == 6);
+    my_assert(build_word_ladder("code", "data", dictionary).size() == 6);
+    my_assert(build_word_ladder("work", "play", dictionary).size() == 6);
+    my_assert(build_word_ladder("sleep", "awake", dictionary).size() == 8);
+    my_assert(build_word_ladder("car", "cheat", dictionary).size() == 4);
 }
